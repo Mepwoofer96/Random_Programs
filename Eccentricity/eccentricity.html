@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Orbit Eccentricity Explorer</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --panel: #10151f;
+    --line: #1f2a3a;
+    --text: #dbe4f0;
+    --dim: #6c7c93;
+    --accent: #ff8a3d;
+    --accent-dim: #7a4a26;
+    --ellipse: #4fd1c5;
+    --parabola: #f6c344;
+    --hyperbola: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Georgia', 'Iowan Old Style', serif;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 40px;
+    gap: 18px;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+    margin: 0;
+    color: var(--text);
+  }
+  h1 em {
+    color: var(--accent);
+    font-style: normal;
+  }
+  .stage {
+    position: relative;
+    background: radial-gradient(ellipse at 32% 50%, #131b28 0%, #0a0e17 70%);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    width: 100%;
+    max-width: 760px;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .readout {
+    position: absolute;
+    top: 16px;
+    left: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: var(--dim);
+    line-height: 1.6;
+  }
+  .readout .e-val {
+    font-size: 26px;
+    color: var(--text);
+  }
+  .readout .kind {
+    font-size: 13px;
+    letter-spacing: 0.4px;
+  }
+  .controls {
+    width: 100%;
+    max-width: 760px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 18px 22px 20px;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .slider-row span {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    width: 28px;
+  }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    background: linear-gradient(to right, var(--ellipse) 0 33.3%, var(--parabola) 33.3% 34%, var(--hyperbola) 34% 100%);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 2px solid var(--accent);
+    cursor: pointer;
+    margin-top: -1px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 2px solid var(--accent);
+    cursor: pointer;
+  }
+  .marks {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Courier New', monospace;
+    font-size: 10.5px;
+    color: var(--dim);
+    margin-top: 6px;
+    padding: 0 28px 0 42px;
+  }
+  .legend {
+    display: flex;
+    gap: 22px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    color: var(--dim);
+  }
+  .legend div { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  footer {
+    max-width: 760px;
+    color: var(--dim);
+    font-size: 12.5px;
+    line-height: 1.6;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>orbit shape vs. <em>eccentricity</em></h1>
+
+<div class="stage">
+  <canvas id="orbitCanvas" width="1520" height="900"></canvas>
+  <div class="readout">
+    <div class="e-val" id="eVal">e = 0.00</div>
+    <div class="kind" id="kindVal">circular</div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="slider-row">
+    <span>0.0</span>
+    <input type="range" id="slider" min="0" max="300" value="0" step="1">
+    <span>3.0</span>
+  </div>
+  <div class="marks">
+    <span>circle</span><span>ellipses →</span><span>parabola</span><span>← hyperbolas</span>
+  </div>
+  <div class="legend">
+    <div><span class="dot" style="background:var(--ellipse)"></span> e &lt; 1 — closed (bound) orbit</div>
+    <div><span class="dot" style="background:var(--parabola)"></span> e = 1 — escape, zero energy</div>
+    <div><span class="dot" style="background:var(--hyperbola)"></span> e &gt; 1 — escape, positive energy</div>
+  </div>
+</div>
+
+<footer>
+  r(θ) = p / (1 + e·cos θ), semi-latus rectum p held fixed at the focus (orange dot).<br>
+  A marker sweeps the real branch of each curve so you can see where the path actually goes.
+</footer>
+
+<script>
+const canvas = document.getElementById('orbitCanvas');
+const ctx = canvas.getContext('2d');
+const slider = document.getElementById('slider');
+const eVal = document.getElementById('eVal');
+const kindVal = document.getElementById('kindVal');
+
+const W = canvas.width, H = canvas.height;
+const focusX = W * 0.34, focusY = H * 0.52;
+const p = 210; // semi-latus rectum in px
+let t = 0;
+
+function colorFor(e) {
+  if (e < 0.999) return getComputedStyle(document.documentElement).getPropertyValue('--ellipse').trim();
+  if (e < 1.001) return getComputedStyle(document.documentElement).getPropertyValue('--parabola').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--hyperbola').trim();
+}
+
+function kindLabel(e) {
+  if (e < 0.001) return 'circular';
+  if (e < 0.999) return 'elliptical — bound orbit';
+  if (e < 1.001) return 'parabolic — marginal escape';
+  return 'hyperbolic — unbound escape';
+}
+
+function thetaRange(e) {
+  if (e < 1.001) {
+    return { start: 0, end: Math.PI * 2, wrap: true };
+  }
+  const thetaMax = Math.acos(-1 / e) * 0.995; // pull in slightly from asymptote
+  return { start: -thetaMax, end: thetaMax, wrap: false };
+}
+
+function orbitPoint(theta, e) {
+  const r = p / (1 + e * Math.cos(theta));
+  return {
+    x: focusX + r * Math.cos(theta),
+    y: focusY + r * Math.sin(theta),
+    r
+  };
+}
+
+function draw() {
+  const e = slider.value / 100;
+  eVal.textContent = 'e = ' + e.toFixed(2);
+  kindVal.textContent = kindLabel(e);
+  const col = colorFor(e);
+
+  ctx.clearRect(0, 0, W, H);
+
+  // faint reference grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let gx = 0; gx < W; gx += 60) {
+    ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+  }
+  for (let gy = 0; gy < H; gy += 60) {
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+  }
+
+  // asymptotes for hyperbola
+  if (e > 1.001) {
+    const thetaMax = Math.acos(-1 / e);
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.setLineDash([6, 8]);
+    ctx.lineWidth = 1.2;
+    [thetaMax, -thetaMax].forEach(th => {
+      ctx.beginPath();
+      ctx.moveTo(focusX, focusY);
+      ctx.lineTo(focusX + Math.cos(th) * W, focusY + Math.sin(th) * W);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+
+  // orbit path
+  const { start, end, wrap } = thetaRange(e);
+  const steps = 400;
+  ctx.beginPath();
+  let started = false;
+  const maxR = 1400;
+  for (let i = 0; i <= steps; i++) {
+    const theta = start + (end - start) * (i / steps);
+    const pt = orbitPoint(theta, e);
+    if (pt.r < 0 || pt.r > maxR) { started = false; continue; }
+    if (!started) { ctx.moveTo(pt.x, pt.y); started = true; }
+    else ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 3;
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 14;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // focus (central body)
+  ctx.beginPath();
+  ctx.arc(focusX, focusY, 9, 0, Math.PI * 2);
+  ctx.fillStyle = '#ff8a3d';
+  ctx.shadowColor = '#ff8a3d';
+  ctx.shadowBlur = 18;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // moving marker along the real branch
+  const span = end - start;
+  const theta = start + ((t % 1) * span);
+  const mp = orbitPoint(theta, e);
+  if (mp.r > 0 && mp.r < maxR) {
+    ctx.beginPath();
+    ctx.arc(mp.x, mp.y, 6.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function animate() {
+  t += 0.0028;
+  draw();
+  requestAnimationFrame(animate);
+}
+
+slider.addEventListener('input', draw);
+animate();
+</script>
+
+</body>
+</html>
