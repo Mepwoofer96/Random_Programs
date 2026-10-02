@@ -1,0 +1,85 @@
+body.background {
+  margin: 0;
+  background: #000;
+}
+
+.crt {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+
+  /* faint phosphor glow, brighter in the center */
+  background: radial-gradient(ellipse at center, #062006 0%, #020a02 70%, #000 100%);
+
+  color: #33ff55;
+  font-family: "Courier New", monospace;
+  font-size: clamp(24px, 4vw, 48px);
+  text-align: center;
+  /* layered glow: tight and bright, then wide and soft */
+  text-shadow:
+    0 0 2px #33ff55,
+    0 0 8px rgba(51, 255, 85, 0.7),
+    0 0 20px rgba(51, 255, 85, 0.35);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+}
+
+/* scanlines + vignette overlay, on top of the content */
+.crt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.6) 100%),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.28) 0 1px,
+      transparent 1px 3px
+    );
+  background-size: 100% 100%, 100% 3px;
+}
+
+/* subtle brightness flicker on the text only */
+.crt h1, .crt a {
+  animation: flicker 6s infinite;
+}
+
+.crt a {
+  color: inherit;
+  text-decoration: none;
+  border: 2px solid currentColor;
+  padding: 0.1em 0.6em;
+  margin-top: 1rem;
+}
+.crt a:hover {
+  background: #33ff55;
+  color: #000;
+  text-shadow: none;
+}
+
+@media screen {
+  .crt::after {
+    animation: scanlines 6s linear infinite;
+  }
+}
+
+@keyframes scanlines {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 0, 0 3px; }  /* matches the 3px tile */
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  92%      { opacity: 1; }
+  93%      { opacity: 0.85; }
+  95%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt::after, .crt h1, .crt a { animation: none; }
+}

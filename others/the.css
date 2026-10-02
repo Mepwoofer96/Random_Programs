@@ -1,0 +1,33 @@
+.fontb {
+    font-family: 'alarmclock', Arial, Helvetica, sans-serif;
+    color: #e7e7e7;
+    text-shadow: 2px 2px 2px grey;
+	transition: color 0.4s, background-image 0.4s, text-shadow 0.1s;
+    text-size-adjust: none;
+}
+
+.clocklocaltime
+{
+    display: block;
+    width:196px;
+    height: 97px;
+    background-image: url(images/websiteclock1.png);
+    margin-bottom: 8px;
+    filter: drop-shadow(1px 1px 2px grey);
+}
+
+.timefrc
+{
+	font-family: 'alarmclock', Arial, Helvetica, sans-serif;
+	font-size: 27px;
+    text-align: center;
+	letter-spacing: 1.2px;
+	color: #00ff21;
+	text-shadow: 2px 2px 4px #00ff21;
+    text-size-adjust: none;
+}
+
+  @font-face{
+    font-family: 'alarmclock';
+    src: url('fonts/alarmclock.ttf');
+  }
