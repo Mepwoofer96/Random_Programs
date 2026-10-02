@@ -1,15 +1,44 @@
 body.background {
   margin: 0;
   background: #000;
+  display: grid;
+  place-items: center;
+  height: 100dvh;             
+  perspective: 1400px;  
+}
+
+.monitor {
+  width: 100vw;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 2.5vmin;               /* vmin = 1% of the smaller screen side, so the bezel stays even */
+  border-radius: 4vmin;
+  container-type: inline-size;             /* children can size from the monitor's width */
+  border-radius: 0cqw;
+  background: linear-gradient(145deg, #2a2c2a, #2a2d2a 50%, #1a1c1a);
+  box-shadow:
+    inset 0 0 0 2px #5c615c,             /* thin highlight on the outer edge */
+    inset 0 0 30px rgba(0, 0, 0, .6),    /* shading toward the inside */
+    0 20px 60px rgba(0, 0, 0, .8);       /* drop shadow on the table */
 }
 
 .crt {
-  position: relative;
-  min-height: 100vh;
-  overflow: hidden;
 
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 6% / 10%;  
   /* faint phosphor glow, brighter in the center */
   background: radial-gradient(ellipse at center, #062006 0%, #020a02 70%, #000 100%);
+ 
+  box-shadow:
+    inset 0 0 8cqw rgba(0, 0, 0, .9),    /* dark edges: glass curving away */
+    inset 0 0 1.5cqw #000,
+    0 0 0 .6cqw #111,                    /* recess lip between screen and case */
+    0 0 0 .8cqw #3a3e3a;
+
 
   color: #33ff55;
   font-family: "Courier New", monospace;
@@ -21,11 +50,12 @@ body.background {
     0 0 8px rgba(51, 255, 85, 0.7),
     0 0 20px rgba(51, 255, 85, 0.35);
 
+
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem 1rem;
-  box-sizing: border-box;
+  padding: 3cqw;
+
 }
 
 /* scanlines + vignette overlay, on top of the content */
@@ -34,14 +64,9 @@ body.background {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image:
-    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.6) 100%),
-    repeating-linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.28) 0 1px,
-      transparent 1px 3px
-    );
-  background-size: 100% 100%, 100% 3px;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,.28) 0 1px, transparent 1px 3px);
+  background-size: 100% 3px;
+  animation: scanlines 6s linear infinite;
 }
 
 /* subtle brightness flicker on the text only */
@@ -80,6 +105,7 @@ body.background {
   95%      { opacity: 1; }
 }
 
+
 @media (prefers-reduced-motion: reduce) {
-  .crt::after, .crt h1, .crt a { animation: none; }
+  .crt::after { animation: none; }
 }

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CRT Test2</title>
+  <link rel="icon" type="png" href="">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style3.css">
+
+</head>
+
+<body class="background">
+
+  <div class="monitor">
+    <div class="crt">
+      <div class="screen">
+        <div class="terminal" id="term">
+          <div class="history" id="history"></div>
+            <div class="prompt">
+              <span class="ps">:&gt;</span>
+              <span class="typed" id="typed"></span><span class="cursor"></span>
+              <input id="input" class="capture" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="terminal input">
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="dome" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feImage id="domeMap" preserveAspectRatio="none" result="map"/>
+      <feDisplacementMap id="domeDisp" in="SourceGraphic" in2="map"
+                         scale="100" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+
+<script>
+  const map = document.getElementById('domeMap');
+  const disp = document.getElementById('domeDisp');
+  const screenEl = document.querySelector('.screen');
+  const STRENGTH = 0.07;   // how far the edges bow, as a fraction of screen size (try 0.02 to 0.08)
+
+  function buildDome() {
+    const w = screenEl.clientWidth, h = screenEl.clientHeight, m = Math.max(w, h);
+
+    // one gradient per axis; 128 = no shift, values rise or fall with the cube of the distance from center
+    const stops = (amp, ch) => Array.from({ length: 17 }, (_, i) => {
+      const u = i / 8 - 1;                                    // -1 .. 1 across the screen
+      const v = Math.round(255 * (0.5 + 0.5 * amp * u ** 3));
+      const rgb = ch === 'r' ? `${v},0,0` : `0,${v},0`;
+      return `<stop offset="${i / 16}" stop-color="rgb(${rgb})"/>`;
+    }).join('');
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+      <defs>
+        <linearGradient id="x" x1="0" y1="0" x2="1" y2="0">${stops(w / m, 'r')}</linearGradient>
+        <linearGradient id="y" x1="0" y1="0" x2="0" y2="1">${stops(h / m, 'g')}</linearGradient>
+      </defs>
+      <rect width="256" height="256" fill="#000"/>
+      <rect width="256" height="256" fill="url(#x)"/>
+      <rect width="256" height="256" fill="url(#y)" style="mix-blend-mode:screen"/>
+    </svg>`;
+
+    map.setAttribute('href', 'data:image/svg+xml,' + encodeURIComponent(svg));
+    disp.setAttribute('scale', 2 * STRENGTH * m);
+  }
+
+  buildDome();
+  addEventListener('resize', buildDome);
+</script>
+<script>
+  const term    = document.getElementById('term');
+  const history = document.getElementById('history');
+  const typed   = document.getElementById('typed');
+  const input   = document.getElementById('input');
+
+  term.addEventListener('click', () => input.focus());   // click anywhere to type
+  input.focus();
+
+  input.addEventListener('input', () => {
+    typed.textContent = input.value;                      // mirror the text next to the cursor
+  });
+
+// remove the oldest lines until everything fits on screen
+function trim() {
+  while (history.firstChild && term.scrollHeight > term.clientHeight) {
+    history.removeChild(history.firstChild);
+  }
+}
+
+addEventListener('resize', trim);   // shrinking the window drops lines too
+
+// add one line to the history
+function addLine(text) {
+  const line = document.createElement('div');
+  line.textContent = text;
+  history.appendChild(line);
+}
+
+const files = {
+  'about.txt':   ['Mepwoofer96 Terminal v0.5.1', 'I forgor'],
+  'contact.txt': ['EMAIL: you@example.com'],
+  'projects/':   ['the'],                      // a trailing slash marks a folder; null means no contents
+};
+
+// word typed -> lines to print (edit these)
+const commands = {
+  help:  ['AVAILABLE COMMANDS:', '  help   about   date   clear   page'],
+  about: ['Mepwoofer96 Terminal v0.5.1', 'I forgor'],
+  date:  () => [new Date().toLocaleString()],   // a function runs each time, so the output can change
+  page: () => window.location.href = "test.html",
+  ls: () => Object.keys(files),
+};
+
+input.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+
+  const raw = input.value;
+  const cmd = raw.trim().toLowerCase();         // "HELP " and "help" both match
+
+  addLine(':> ' + raw);                          // echo what was typed
+
+  if (cmd === 'clear') {
+    history.innerHTML = '';
+
+  } else if (cmd in commands) {
+    const out = commands[cmd];
+    (typeof out === 'function' ? out() : out).forEach(addLine);
+    
+  } else if (cmd) {
+    addLine('UNKNOWN COMMAND: ' + cmd.toUpperCase());
+    addLine('Type Help for useful commands');
+  }
+
+  input.value = '';
+  typed.textContent = '';
+  trim();
+});
+
+addEventListener('pageshow', e => {
+  if (e.persisted) {              // true only when the page came back from the cache
+    history.innerHTML = '';
+    input.value = '';
+    typed.textContent = '';
+    input.focus();
+  }
+});
+</script>
+</body>
