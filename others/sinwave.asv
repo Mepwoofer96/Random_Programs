@@ -1,0 +1,85 @@
+close all
+
+A   = 4.5;
+f0  = 3;                 % Hz
+T   = 1/f0;
+w0  = 2*pi*f0;
+phi = 0;
+
+A2 = 3;
+f2  = 5;                 % Hz
+T   = 1/f0;
+w2  = 2*pi*f2;
+
+A3 = 1;
+f3 = 10;
+w3 = 2*pi*f2;
+
+t = 0:0.001:3;         % 3 periods, fine resolution
+x = A*sin(w0*t - phi)+A2*sin(w2*t - phi)+A3*sin(w3*t - phi);
+x2 = A3*sin(w3*t - phi);
+figure('Color','w')
+plot(t, x, 'LineWidth', 1.8, 'Color', 'b')
+grid on
+box on
+xlim([0 2])
+ylim([-A A])
+xlabel('Time (s)', 'FontSize', 12)
+ylabel('Voltage (V)', 'FontSize', 12)
+title('x(t) = A sin(\omega_0 t - \phi)', 'FontSize', 14)
+set(gca, 'FontSize', 11, 'GridAlpha', 0.3)
+
+
+yticks(-6:1:6)           % every integer from -6 to 6
+
+yline(0,  'k-',  'LineWidth', 0.5)
+yline(A,  '--k', 'LineWidth', 0.8)
+yline(-A, '--k', 'LineWidth', 0.8)
+
+
+clear; clc
+
+% --- Parameters ---
+A   = 4.5;   f0 = 3;
+A2  = 3;     f2 = 5;
+A3  = 1;    f3 = 10;
+phi = 0;
+
+w0 = 2*pi*f0;
+w2 = 2*pi*f2;
+w3 = 2*pi*f3;            % was 2*pi*f2
+
+% --- Time vector ---
+Fs = 1000;
+t  = 0:1/Fs:3-1/Fs;      % exactly 3 s, no repeated endpoint sample
+N  = length(t);
+
+x = A*sin(w0*t - phi) + A2*sin(w2*t - phi) + A3*sin(w3*t - phi);
+
+% --- FFT (single-sided amplitude) ---
+X  = fft(x);
+P2 = abs(X/N);
+P1 = P2(1:N/2+1);
+P1(2:end-1) = 2*P1(2:end-1);
+f  = Fs*(0:N/2)/N;
+
+% --- Plots ---
+figure('Color','w')
+
+subplot(2,1,1)
+plot(t, x, 'LineWidth', 1.5, 'Color', 'b')
+grid on; box on
+xlim([0 2])
+xlabel('Time (s)', 'FontSize', 12)
+ylabel('Voltage (V)', 'FontSize', 12)
+title('x(t) = A_1 sin(\omega_0 t - \phi) + A_2 sin(\omega_2 t - \phi) + A_3 sin(\omega_3 t - \phi)', 'FontSize', 12)
+yline(0, 'k-', 'LineWidth', 0.5)
+
+subplot(2,1,2)
+stem(f, P1, 'LineWidth', 1.8, 'Color', 'r', 'Marker', 'o')
+grid on; box on
+xlim([0 15])
+xlabel('Frequency (Hz)', 'FontSize', 12)
+ylabel('Amplitude (V)', 'FontSize', 12)
+title('Single-Sided Amplitude Spectrum', 'FontSize', 12)
+xticks(0:1:15)
