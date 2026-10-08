@@ -1,60 +1,23 @@
-close all
-
-A   = 4.5;
-f0  = 3;                 % Hz
-T   = 1/f0;
-w0  = 2*pi*f0;
-phi = 0;
-
-A2 = 3;
-f2  = 5;                 % Hz
-T   = 1/f0;
-w2  = 2*pi*f2;
-
-A3 = 1;
-f3 = 10;
-w3 = 2*pi*f2;
-
-t = 0:0.001:3;         % 3 periods, fine resolution
-x = A*sin(w0*t - phi)+A2*sin(w2*t - phi)+A3*sin(w3*t - phi);
-x2 = A3*sin(w3*t - phi);
-figure('Color','w')
-plot(t, x, 'LineWidth', 1.8, 'Color', 'b')
-grid on
-box on
-xlim([0 2])
-ylim([-A A])
-xlabel('Time (s)', 'FontSize', 12)
-ylabel('Voltage (V)', 'FontSize', 12)
-title('x(t) = A sin(\omega_0 t - \phi)', 'FontSize', 14)
-set(gca, 'FontSize', 11, 'GridAlpha', 0.3)
-
-
-yticks(-6:1:6)           % every integer from -6 to 6
-
-yline(0,  'k-',  'LineWidth', 0.5)
-yline(A,  '--k', 'LineWidth', 0.8)
-yline(-A, '--k', 'LineWidth', 0.8)
-
-
-clear; clc
+close all; clear; clc
 
 % --- Parameters ---
-A   = 4.5;   f0 = 3;
-A2  = 3;     f2 = 5;
+A   = 4.5;  f0 = 3;
+A2  = 3;    f2 = 5;
 A3  = 1;    f3 = 10;
 phi = 0;
 
 w0 = 2*pi*f0;
 w2 = 2*pi*f2;
-w3 = 2*pi*f3;            % was 2*pi*f2
+w3 = 2*pi*f3;
 
 % --- Time vector ---
 Fs = 1000;
-t  = 0:1/Fs:3-1/Fs;      % exactly 3 s, no repeated endpoint sample
+t  = 0:1/Fs:3-1/Fs;
 N  = length(t);
 
-x = A*sin(w0*t - phi) + A2*sin(w2*t - phi) + A3*sin(w3*t - phi);
+% --- Signals ---
+x  = A*sin(w0*t - phi) + A2*sin(w2*t - phi) + A3*sin(w3*t - phi);
+x2 = A3*sin(w3*t - phi);
 
 % --- FFT (single-sided amplitude) ---
 X  = fft(x);
@@ -63,23 +26,82 @@ P1 = P2(1:N/2+1);
 P1(2:end-1) = 2*P1(2:end-1);
 f  = Fs*(0:N/2)/N;
 
-% --- Plots ---
+% --- Figure 1: composite signal + spectrum ---
 figure('Color','w')
 
 subplot(2,1,1)
 plot(t, x, 'LineWidth', 1.5, 'Color', 'b')
 grid on; box on
 xlim([0 2])
-xlabel('Time (s)', 'FontSize', 12)
-ylabel('Voltage (V)', 'FontSize', 12)
-title('x(t) = A_1 sin(\omega_0 t - \phi) + A_2 sin(\omega_2 t - \phi) + A_3 sin(\omega_3 t - \phi)', 'FontSize', 12)
+xlabel('Time (s)'); ylabel('Voltage (V)')
+title('x(t) = A_1 sin(\omega_0 t - \phi) + A_2 sin(\omega_2 t - \phi) + A_3 sin(\omega_3 t - \phi)')
 yline(0, 'k-', 'LineWidth', 0.5)
 
 subplot(2,1,2)
 stem(f, P1, 'LineWidth', 1.8, 'Color', 'r', 'Marker', 'o')
 grid on; box on
-xlim([0 15])
-xlabel('Frequency (Hz)', 'FontSize', 12)
-ylabel('Amplitude (V)', 'FontSize', 12)
-title('Single-Sided Amplitude Spectrum', 'FontSize', 12)
-xticks(0:1:15)
+xlim([0 15]); xticks(0:1:15)
+xlabel('Frequency (Hz)'); ylabel('Amplitude (V)')
+title('Single-Sided Amplitude Spectrum')
+
+% --- Figure 2: third component alone ---
+figure('Color','w')
+plot(t, x2, 'LineWidth', 1.8, 'Color', 'g')
+grid on; box on
+xlim([0 2])
+ylim([-A3*1.2 A3*1.2])
+xlabel('Time (s)'); ylabel('Voltage (V)')
+title('x_3(t) = A_3 sin(\omega_3 t - \phi)')
+
+% --- Figure 3: frequency vs time (spectrogram, base MATLAB) ---
+L    = 1500;                              % window length (samples) = 1.5 s at Fs = 1000
+hop  = 100;                               % step between windows (L - hop = overlap)
+nfft = 4096;                              % zero-pad for a smoother image
+
+w = 0.5*(1 - cos(2*pi*(0:L-1)/(L-1)));    % Hann window (row vector, same as hann(L)')
+
+starts = 1:hop:(N - L + 1);               % first sample of each window
+nSeg   = numel(starts);
+Amp    = zeros(nfft/2 + 1, nSeg);
+
+for k = 1:nSeg
+    seg = x(starts(k) : starts(k)+L-1) .* w;
+    X   = fft(seg, nfft);                 % fft zero-pads to nfft
+    Amp(:,k) = 2*abs(X(1:nfft/2+1)) / sum(w);   % scale so tones read as true amplitude (V)
+end
+
+fS = Fs*(0:nfft/2)/nfft;                  % frequency axis (Hz)
+tS = (starts - 1 + L/2) / Fs;             % time at the center of each window (s)
+
+figure('Color','w')
+imagesc(tS, fS, Amp)
+axis xy                                   % low frequencies at the bottom
+ylim([0 15])
+xlabel('Time (s)'); ylabel('Frequency (Hz)')
+title('Spectrogram: Frequency vs Time')
+cb = colorbar; cb.Label.String = 'Amplitude (V)';
+colormap turbo                            % use 'jet' if turbo isn't available in your version
+yticks(0:1:15)
+
+
+
+
+
+fs = 5000;  t = 0:1/fs:3;
+
+x1 = 3*sin(2*pi*5*t);
+x2 = 4.5*sin(2*pi*3*t);
+s  = (x1 + x2) / 7.5;          % message, normalized to +/-1
+
+fc = 100;  m = 1;            % carrier >> message frequencies
+carrier = sin(2*pi*fc*t);
+
+am = (1 + m*s) .* carrier;     % AM
+
+% FM version
+kf = 20;                       % Hz deviation per unit of s
+fm = sin(2*pi*fc*t + 2*pi*kf*cumsum(s)/fs);
+
+plot(t, am); hold on; plot(t, 1 + m*s, 'r', t, -(1 + m*s), 'r');
+
+plot()

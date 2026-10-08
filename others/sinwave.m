@@ -52,3 +52,92 @@ xlim([0 2])
 ylim([-A3*1.2 A3*1.2])
 xlabel('Time (s)'); ylabel('Voltage (V)')
 title('x_3(t) = A_3 sin(\omega_3 t - \phi)')
+
+% --- Figure 3: frequency vs time (spectrogram, base MATLAB) ---
+L    = 1500;                              % window length (samples) = 1.5 s at Fs = 1000
+hop  = 100;                               % step between windows (L - hop = overlap)
+nfft = 4096;                              % zero-pad for a smoother image
+
+w = 0.5*(1 - cos(2*pi*(0:L-1)/(L-1)));    % Hann window (row vector, same as hann(L)')
+
+starts = 1:hop:(N - L + 1);               % first sample of each window
+nSeg   = numel(starts);
+Amp    = zeros(nfft/2 + 1, nSeg);
+
+for k = 1:nSeg
+    seg = x(starts(k) : starts(k)+L-1) .* w;
+    X   = fft(seg, nfft);                 % fft zero-pads to nfft
+    Amp(:,k) = 2*abs(X(1:nfft/2+1)) / sum(w);   % scale so tones read as true amplitude (V)
+end
+
+fS = Fs*(0:nfft/2)/nfft;                  % frequency axis (Hz)
+tS = (starts - 1 + L/2) / Fs;             % time at the center of each window (s)
+
+figure('Color','w')
+imagesc(tS, fS, Amp)
+axis xy                                   % low frequencies at the bottom
+ylim([0 15])
+xlabel('Time (s)'); ylabel('Frequency (Hz)')
+title('Spectrogram: Frequency vs Time')
+cb = colorbar; cb.Label.String = 'Amplitude (V)';
+colormap turbo                            % use 'jet' if turbo isn't available in your version
+yticks(0:1:15)
+
+
+
+
+
+fs = 5000;  t = 0:1/fs:3;
+
+x1 = 3*sin(2*pi*5*t);
+x2 = 4.5*sin(2*pi*3*t);
+s  = (x1 + x2) / 7.5;          % message, normalized to +/-1
+
+fc = 100;  m = 1;            % carrier >> message frequencies
+carrier = sin(2*pi*fc*t);
+
+am = (1 + m*s) .* carrier;     % AM
+
+% FM version
+kf = 20;                       % Hz deviation per unit of s
+fm = sin(2*pi*fc*t + 2*pi*kf*cumsum(s)/fs);
+
+plot(t, am); hold on; plot(t, 1 + m*s, 'r', t, -(1 + m*s), 'r');
+
+
+
+
+% --- Build the FM signal ---
+Fs = 1000;  t = 0:1/Fs:3-1/Fs;  N = numel(t);
+x1 = 3*sin(2*pi*5*t);
+x2 = 4.5*sin(2*pi*3*t);
+s  = (x1 + x2) / 7.5;                     % message, normalized to +/-1
+fc = 100;  kf = 20;
+x  = sin(2*pi*fc*t + 2*pi*kf*cumsum(s)/Fs);   % FM signal
+
+% --- Figure 3: frequency vs time (spectrogram, base MATLAB) ---
+L    = 150;                               % window length (samples) = 0.15 s at Fs = 1000
+hop  = 10;                                % step between windows
+nfft = 4096;
+w = 0.5*(1 - cos(2*pi*(0:L-1)/(L-1)));    % Hann window
+starts = 1:hop:(N - L + 1);
+nSeg   = numel(starts);
+Amp    = zeros(nfft/2 + 1, nSeg);
+for k = 1:nSeg
+    seg = x(starts(k) : starts(k)+L-1) .* w;
+    X   = fft(seg, nfft);
+    Amp(:,k) = 2*abs(X(1:nfft/2+1)) / sum(w);
+end
+fS = Fs*(0:nfft/2)/nfft;
+tS = (starts - 1 + L/2) / Fs;
+figure('Color','w')
+imagesc(tS, fS, Amp)
+axis xy
+ylim([60 140])                            % FM lives around fc = 100 Hz
+xlabel('Time (s)'); ylabel('Frequency (Hz)')
+title('Spectrogram: FM Frequency vs Time')
+cb = colorbar; cb.Label.String = 'Amplitude (V)';
+colormap turbo
+yticks(60:10:140)
+hold on
+plot(t, fc + kf*s, 'w--')                 % ideal instantaneous frequency for comparison
