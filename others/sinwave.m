@@ -1,9 +1,11 @@
 close all; clear; clc
 
+%  PART 1: NORMAL (BASEBAND) WAVES - three sine tones, no modulation
+
 % --- Parameters ---
-A   = 4.5;  f0 = 3;
-A2  = 3;    f2 = 5;
-A3  = 1;    f3 = 10;
+A   = 4.5;  f0 = 3;      % tone 1: 4.5 V at 3 Hz
+A2  = 3;    f2 = 5;      % tone 2: 3 V at 5 Hz
+A3  = 1;    f3 = 10;     % tone 3: 1 V at 10 Hz
 phi = 0;
 
 w0 = 2*pi*f0;
@@ -16,17 +18,17 @@ t  = 0:1/Fs:3-1/Fs;
 N  = length(t);
 
 % --- Signals ---
-x  = A*sin(w0*t - phi) + A2*sin(w2*t - phi) + A3*sin(w3*t - phi);
-x2 = A3*sin(w3*t - phi);
+x = (A*sin(w0*t - phi) + A2*sin(w2*t - phi))  .* (A3*sin(w3*t - phi));% NORMAL composite wave (3+5+10 Hz)
+x2 = A3*sin(w3*t - phi);                                           % NORMAL single wave (10 Hz only)
 
-% --- FFT (single-sided amplitude) ---
+% --- FFT (single-sided amplitude) of the NORMAL composite wave ---
 X  = fft(x);
 P2 = abs(X/N);
 P1 = P2(1:N/2+1);
 P1(2:end-1) = 2*P1(2:end-1);
 f  = Fs*(0:N/2)/N;
 
-% --- Figure 1: composite signal + spectrum ---
+% --- Figure 1: NORMAL composite wave + its spectrum ---
 figure('Color','w')
 
 subplot(2,1,1)
@@ -34,7 +36,7 @@ plot(t, x, 'LineWidth', 1.5, 'Color', 'b')
 grid on; box on
 xlim([0 2])
 xlabel('Time (s)'); ylabel('Voltage (V)')
-title('x(t) = A_1 sin(\omega_0 t - \phi) + A_2 sin(\omega_2 t - \phi) + A_3 sin(\omega_3 t - \phi)')
+title('NORMAL wave: x(t) = A_1 sin(\omega_0 t - \phi) + A_2 sin(\omega_2 t - \phi) + A_3 sin(\omega_3 t - \phi)')
 yline(0, 'k-', 'LineWidth', 0.5)
 
 subplot(2,1,2)
@@ -42,18 +44,18 @@ stem(f, P1, 'LineWidth', 1.8, 'Color', 'r', 'Marker', 'o')
 grid on; box on
 xlim([0 15]); xticks(0:1:15)
 xlabel('Frequency (Hz)'); ylabel('Amplitude (V)')
-title('Single-Sided Amplitude Spectrum')
+title('NORMAL wave: Single-Sided Amplitude Spectrum')
 
-% --- Figure 2: third component alone ---
+% --- Figure 2: NORMAL third component alone ---
 figure('Color','w')
 plot(t, x2, 'LineWidth', 1.8, 'Color', 'g')
 grid on; box on
 xlim([0 2])
 ylim([-A3*1.2 A3*1.2])
 xlabel('Time (s)'); ylabel('Voltage (V)')
-title('x_3(t) = A_3 sin(\omega_3 t - \phi)')
+title('NORMAL wave: x_3(t) = A_3 sin(\omega_3 t - \phi)')
 
-% --- Figure 3: frequency vs time (spectrogram, base MATLAB) ---
+% --- Figure 3: NORMAL composite wave spectrogram (frequency vs time) ---
 L    = 1500;                              % window length (samples) = 1.5 s at Fs = 1000
 hop  = 100;                               % step between windows (L - hop = overlap)
 nfft = 4096;                              % zero-pad for a smoother image
@@ -78,44 +80,50 @@ imagesc(tS, fS, Amp)
 axis xy                                   % low frequencies at the bottom
 ylim([0 15])
 xlabel('Time (s)'); ylabel('Frequency (Hz)')
-title('Spectrogram: Frequency vs Time')
+title('NORMAL wave: Spectrogram, Frequency vs Time')
 cb = colorbar; cb.Label.String = 'Amplitude (V)';
 colormap turbo                            % use 'jet' if turbo isn't available in your version
 yticks(0:1:15)
 
 
-
-
+%  PART 2: AM (AMPLITUDE MODULATION) - and the FM signal is generated here
 
 fs = 5000;  t = 0:1/fs:3;
 
-x1 = 3*sin(2*pi*5*t);
-x2 = 4.5*sin(2*pi*3*t);
-s  = (x1 + x2) / 7.5;          % message, normalized to +/-1
+x1 = 3*sin(2*pi*5*t);          % NORMAL message tone 1 (5 Hz)
+x2 = 4.5*sin(2*pi*3*t);        % NORMAL message tone 2 (3 Hz)
+s  = (x1 + x2) / 7.5;          % NORMAL message (baseband), normalized to +/-1
 
-fc = 100;  m = 1;            % carrier >> message frequencies
-carrier = sin(2*pi*fc*t);
+fc = 100;  m = 1;              % carrier >> message frequencies
+carrier = sin(2*pi*fc*t);      % NORMAL carrier wave (100 Hz)
 
-am = (1 + m*s) .* carrier;     % AM
+am = (1 + m*s) .* carrier;     % *** AM signal ***
 
-% FM version
+% FM version (computed here, but not plotted in this section)
 kf = 20;                       % Hz deviation per unit of s
-fm = sin(2*pi*fc*t + 2*pi*kf*cumsum(s)/fs);
+fm = sin(2*pi*fc*t + 2*pi*kf*cumsum(s)/fs);   % *** FM signal (time domain) ***
 
-plot(t, am); hold on; plot(t, 1 + m*s, 'r', t, -(1 + m*s), 'r');
+% AM plot: blue = AM signal, red = envelope (+/-(1 + m*s), i.e. the message riding on the carrier)
+figure('Color','w')
+plot(t, am); hold on
+plot(t, 1 + m*s, 'r', t, -(1 + m*s), 'r')
+grid on; box on
+xlabel('Time (s)'); ylabel('Amplitude')
+title('AM signal (blue) with message envelope (red)')
+legend('AM signal', 'Envelope +(1+ms)', 'Envelope -(1+ms)')
 
 
-
+%  PART 3: FM (FREQUENCY MODULATION) - spectrogram
 
 % --- Build the FM signal ---
 Fs = 1000;  t = 0:1/Fs:3-1/Fs;  N = numel(t);
-x1 = 3*sin(2*pi*5*t);
-x2 = 4.5*sin(2*pi*3*t);
-s  = (x1 + x2) / 7.5;                     % message, normalized to +/-1
+x1 = 3*sin(2*pi*5*t);                     % NORMAL message tone 1 (5 Hz)
+x2 = 4.5*sin(2*pi*3*t);                   % NORMAL message tone 2 (3 Hz)
+s  = (x1 + x2) / 7.5;                     % NORMAL message (baseband), normalized to +/-1
 fc = 100;  kf = 20;
-x  = sin(2*pi*fc*t + 2*pi*kf*cumsum(s)/Fs);   % FM signal
+x  = sin(2*pi*fc*t + 2*pi*kf*cumsum(s)/Fs);   % *** FM signal ***
 
-% --- Figure 3: frequency vs time (spectrogram, base MATLAB) ---
+% --- Figure: FM spectrogram (frequency vs time, base MATLAB) ---
 L    = 150;                               % window length (samples) = 0.15 s at Fs = 1000
 hop  = 10;                                % step between windows
 nfft = 4096;
@@ -135,9 +143,10 @@ imagesc(tS, fS, Amp)
 axis xy
 ylim([60 140])                            % FM lives around fc = 100 Hz
 xlabel('Time (s)'); ylabel('Frequency (Hz)')
-title('Spectrogram: FM Frequency vs Time')
+title('FM signal: Spectrogram, Frequency vs Time')
 cb = colorbar; cb.Label.String = 'Amplitude (V)';
 colormap turbo
 yticks(60:10:140)
 hold on
-plot(t, fc + kf*s, 'w--')                 % ideal instantaneous frequency for comparison
+plot(t, fc + kf*s, 'w--')                 % ideal instantaneous frequency of the FM signal (NORMAL message shifted to fc)
+legend('Ideal instantaneous frequency')
