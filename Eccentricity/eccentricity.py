@@ -1,4 +1,4 @@
- ## Imports
+## Imports
 
 import numpy as np
 
@@ -23,9 +23,9 @@ bodies = {
     "moon":    Body(mu=4902.8,       r=1737,   mass=7.346*10**22,       a=0.0025718815, color = '0.8'),
     "mercury": Body(mu=22032,        r=2440,   mass=3.3*10**23,         a=.3871,        color = 'xkcd:tan'),
     "venus":   Body(mu=324860,       r=6052,   mass=4.87*10**24,        a=.7233,        color = 'xkcd:goldenrod'),
-    "mars":    Body(mu=42828,        r=3390,   mass=6.42*10**23,        a=1.5273,       color = 'xkcd:dirty orange'),
+    "mars":    Body(mu=42828,        r=3390,   mass=6.42*10**23,        a=1.5237,       color = 'xkcd:dirty orange'),
     "saturn":  Body(mu=37941000,     r=58232,  mass=5.68*10**26,        a=9.5388,       color = 'xkcd:brownish yellow'),   
-    "jupiter": Body(mu=126713000,    r=69911,  mass=1.9*10**26,         a=9.5388,       color = 'xkcd:brownish yellow'),
+    "jupiter": Body(mu=126713000,    r=69911,  mass=1.898*10**27,       a=5.2026,       color = 'xkcd:brownish yellow'),
     "uranus":  Body(mu=5794500,      r=25362,  mass=8.68*10**25,        a=19.1914,      color = 'xkcd:purplish blue'),
     "neptune": Body(mu=6836500,      r=24622,  mass=1.02*10**26,        a=30.0611,      color = 'xkcd:ultramarine'),
     "pluto":   Body(mu=981.6,        r=1188,   mass=1.3*10**22,         a=39.5294,      color = 'xkcd:grey'),
@@ -40,6 +40,8 @@ def au_to_km(au):
     return au*1.495979*10**8
 
 def soi(mass2,mass1="sun"):
+    if mass2 == "moon":     # moon's a is relative to earth, not the sun
+        mass1 = "earth"
     b1 = bodies[mass1]
     b2 = bodies[mass2]
 
@@ -48,9 +50,10 @@ def soi(mass2,mass1="sun"):
 def vis_viva(mu, r, a):
     return np.sqrt(mu * (2/r - 1/a))
 
-def orbital_period(planet):
+def orbital_period(planet, a):
+    # a = semi-major axis of the orbit (km, from planet center), e < 1 only
     b = bodies[planet]
-    return 2 * 3.14159 * (b.r**3 / b.mu)**0.5
+    return 2 * np.pi * (a**3 / b.mu)**0.5
 
 def calc_orbit_e(planet,e,r_p):
     b = bodies[planet]
@@ -62,7 +65,7 @@ def calc_orbit_e(planet,e,r_p):
         other_one = bodies["pluto"]
         r_soi = au_to_km(other_one.a)    
     
-    if e != 0 or e >=1:
+    if e >= 1:
         soi_max = np.arccos(((p/r_soi)-1)/e)
 
     if e < 1:
@@ -70,6 +73,7 @@ def calc_orbit_e(planet,e,r_p):
         r_a = p/(1-e)
 
     elif e == 1:
+        r_a = np.inf
         theta_star = np.linspace(-soi_max*.88, soi_max*.88, 361)
 
     elif e > 1:
@@ -108,6 +112,7 @@ def transfer_orbit(r_p, r_a, planet):
     return x, y, e, r_p, v_a, v_p
 
 def transfer_dv(planet,r_a1,r_a2,r_p1,r_p2):
+    # all radii measured from the planet center (include planet r)
     mu = bodies[planet].mu
     r_start , r_end = r_p1,r_a2
 
@@ -155,8 +160,11 @@ def plot_orbit(ax,x, y, e, r_p):
     ax.plot(x, y, linewidth=1)
     ax.set_aspect('equal', adjustable='box')
 
-    ax.text(x[0]*1.001, y[0]*1.15, "PE", fontsize=12, color="darkblue")
-    ax.add_patch(plt.Circle((x[0], y[0]), radius=r_p*.05, facecolor="xkcd:hot pink"))
+    # periapsis is at index 0 for ellipses, but the middle for e >= 1 (theta runs -max to +max)
+    pe = 0 if e < 1 else 180
+
+    ax.text(x[pe]*1.001, y[pe]*1.15, "PE", fontsize=12, color="darkblue")
+    ax.add_patch(plt.Circle((x[pe], y[pe]), radius=r_p*.05, facecolor="xkcd:hot pink"))
 
     if e < 1:
         ax.text(x[180]*.999, y[180]*1.15, "AP", fontsize=12, color="darkblue")
@@ -182,11 +190,11 @@ while select == 1 :
     if planet_n == 1:
         print(" Select Orbits\n 1. 1 Orbit\n 2. 2 Orbit")
         mode =int (input())
-        if mode == 1 or 2:
+        if mode in (1, 2):
             select = 0
 
     elif planet_n == 2:
-        select = 0
+        print("2 Planet mode not implemented yet")
     else:
         print("Try again")
 
@@ -200,17 +208,18 @@ if mode == 1 and planet_n == 1 : ## Single orbit mode
     usr_r_p = float(input("Radius of periapsis (do not include planet r, in Km):"))
     b = bodies[usr_planet]
     x,y,v,_ = calc_orbit_e(usr_planet ,usr_e ,usr_r_p)
-    p = orbital_period(usr_planet)
 
     if usr_planet != "sun":
         s_oi = soi(usr_planet)
         print(f"soi = {s_oi}")
  
     print(f"V_max = {v}")
-    print(f"Planet orbital period = {p}")
+    if usr_e < 1:
+        p = orbital_period(usr_planet, (usr_r_p + b.r)/(1-usr_e))
+        print(f"Orbital period = {p}")
     fig, ax = plt.subplots()
     ax.set_aspect('equal', adjustable='box')
-    plot_orbit(ax, x, y, usr_e, usr_r_p)
+    plot_orbit(ax, x, y, usr_e, usr_r_p + b.r)
     plot_1planet(usr_planet,ax)
     plt.show()
 
@@ -222,11 +231,12 @@ elif mode == 2: ## 2 orbit mode (Transfer orbit)
     usr_e2 = float(input("Enter Eccentricity 2 (e<1 and e>=0):"))
     usr_r_p2 = float(input("Radius of periapsis 2 (do not include planet r, in Km):"))
     b = bodies[usr_planet]
+    rp1 = usr_r_p1 + b.r
+    rp2 = usr_r_p2 + b.r
     x1,y1,v1,r_a1 = calc_orbit_e(usr_planet ,usr_e1 ,usr_r_p1)
     x2,y2,v2,r_a2 = calc_orbit_e(usr_planet ,usr_e2 ,usr_r_p2)
     xt,yt,et,r_pt,v_at,v_pt = transfer_orbit(usr_r_p1,r_a2,usr_planet)
-    p = orbital_period(usr_planet)
-    dv1,dv2,deltav = transfer_dv(usr_planet,r_a1,r_a2,usr_r_p1,usr_r_p2)
+    dv1,dv2,deltav = transfer_dv(usr_planet,r_a1,r_a2,rp1,rp2)
 
     
     
@@ -237,16 +247,10 @@ elif mode == 2: ## 2 orbit mode (Transfer orbit)
     print(f"total Delta-v:{deltav}")
     fig, ax = plt.subplots()
     ax.set_aspect('equal', adjustable='box')
-    plot_orbit(ax, x1, y1, usr_e1, usr_r_p1)
-    plot_orbit(ax, x2, y2, usr_e2, usr_r_p2)
+    plot_orbit(ax, x1, y1, usr_e1, rp1)
+    plot_orbit(ax, x2, y2, usr_e2, rp2)
     plot_orbit(ax, xt, yt, et, r_pt)
     plot_1planet(usr_planet,ax)
     plt.show()
 elif mode == 3: ## Interplanetary mode
     twelve = 2
-
-
-
-
-
-
